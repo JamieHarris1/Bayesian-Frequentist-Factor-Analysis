@@ -1,3 +1,4 @@
+# -- Package developed by Sarah Heaps, Durham University --
 #' @title Graphical diagnostics for arrays of MCMC output.
 #'
 #' @description
