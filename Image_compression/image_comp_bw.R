@@ -25,6 +25,7 @@ for(k in c(10, 20, 50, 100, 500)){
   X_tilde <- (X_tilde_unscaled) + mu
   
   
+  
   #Write image to storage
   image <- t(X_tilde)
   writeJPEG(image, paste('Image_compression/', file_name, '/BW/', file_name,"_",

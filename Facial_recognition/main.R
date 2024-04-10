@@ -28,6 +28,7 @@ X_test <- test - Omega
 svd_X <- svd(X) 
 Theta <- svd_X$u  #will have dim pxn as n<<p so R drops extra columns
 alpha <- svd_X$d
+v <- svd_X$v
 
 plot(seq(1:k), (alpha/cumsum(alpha))[1:k], type='l')
 
@@ -41,12 +42,14 @@ d_ij <- function(j,X,X_test, k){
   d_i <- c()
   for(i in 1:dim(X)[2]){
     z <- t(Theta[,1:k]) %*% X[,i]
-    d_i[i] <- sqrt(t(z-z_test) %*% (z-z_test))
+    S <- cov(z,z_test)
+    d_i[i] <- sqrt(1/S * t(z-z_test) %*% (z-z_test))
   }
   id <- which.min(d_i)
+  MH <- d_i[id]
   plot_face(X[,id])
   plot_face(X_test[,j])
-  return(id)
+  return(list(id=id, MH=MH))
 }
 
 #plot mean face
@@ -78,8 +81,36 @@ plot_face(Theta[,1:k] %*% t(Theta[,1:k]) %*% X[,63])
 
 #test for all j=1,...,40
 #prints two images, 1 test and closest image
-d_ij(36,X,X_test, 20)
-d_ij(10,X,X_test, 20)
-#10 wrong
-#36 impressive
+
+id <- c()
+MH <- c()
+for(j in 1:40){
+  result <- d_ij(j=j,X=X,X_test=X_test, k=20)
+  id[j] <- result$id
+  MH[j] <- result$MH
+  print(paste0("j: ",j, ", Match ", id[j], ", MH: ", MH[j]))
+}
+
+
+#10 wrongly matched to 69 MH: 2.03
+plot_face(X_test[,10])
+plot_face(X[,69])
+
+#36 impressive, matched to 321
+plot_face(X_test[,36])
+plot_face(X[,321])
+
+#plot MH values
+MH_df <- data.frame(Index = 1:40, Value = MH)
+ggplot(MH_df, aes(x = Index, y = Value)) +
+  geom_point(color = "blue", size = 2) +  
+  ggtitle("Scatter Plot of MH[j] Values") + 
+  xlab("Index") +  
+  ylab("Mahalanobis Distance") + 
+  theme_minimal() +
+  geom_hline(yintercept = 0, linetype="dashed", color = "grey", size = 0.5) +  
+  theme(plot.title = element_text(hjust = 0.5))  +
+  geom_point(data = MH_df[10, ], aes(x = Index, y = Value), color = "red", size = 10, shape = 1)
+
+
 
