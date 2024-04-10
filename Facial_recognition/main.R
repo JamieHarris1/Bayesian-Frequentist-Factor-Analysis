@@ -92,7 +92,7 @@ for(j in 1:40){
 }
 
 
-#10 wrongly matched to 69 MH: 2.03
+#10 wrongly matched to 69 MH: 4.56
 plot_face(X_test[,10])
 plot_face(X[,69])
 
