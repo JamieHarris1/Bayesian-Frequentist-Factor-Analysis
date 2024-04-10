@@ -66,19 +66,6 @@ for(h in 1:6){
   plot_face(Theta[,h])
 }
 
-#reproduce 63,58, 56 and Z values
-plot_face(Theta[,1:k] %*% t(Theta[,1:k]) %*% X[,56])
-#z values
-(t(Theta[,1:k]) %*% X[,56])[1:3]
-
-plot_face(Theta[,1:k] %*% t(Theta[,1:k]) %*% X[,58])
-#z values
-(t(Theta[,1:k]) %*% X[,58])[1:3]
-
-plot_face(Theta[,1:k] %*% t(Theta[,1:k]) %*% X[,63])
-#z values
-(t(Theta[,1:k]) %*% X[,63])[1:3]
-
 #test for all j=1,...,40
 #prints two images, 1 test and closest image
 
