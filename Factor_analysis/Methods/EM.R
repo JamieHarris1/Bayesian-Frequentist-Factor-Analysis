@@ -12,9 +12,7 @@ em <- function(data, k, iter){
   sigma <- diag(runif(p))
   I <- diag(rep(1,k))
   
-  #loglikelihood
-  c <- (n*p/2) * log(2*pi)
-  LL <- rep(0, 1)
+
   
   #####
   

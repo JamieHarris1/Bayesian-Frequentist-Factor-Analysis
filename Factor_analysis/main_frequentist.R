@@ -6,6 +6,7 @@ library(lubridate)
 library(zoo)
 library(readxl)
 library(tidyverse)
+library(pheatmap)
 source("Factor_analysis/Methods/EM.R")
 source("Factor_analysis/Methods/PCA.R")
 set.seed(123)
@@ -35,6 +36,13 @@ ggplot(longer, aes(x = quarterly_dates, y = values, color = group)) +
   theme_minimal() +  # Set a minimal theme
   scale_color_manual(values = c("blue", "orange", "darkgreen"))  # Customize color scale
 
+pheatmap(cor(data[,-1]), 
+         color = colorRampPalette(c("blue", "white", "red"))(100),
+         main = "Covariance Matrix Heatmap",
+         display_numbers = FALSE,
+         cluster_rows = FALSE,
+         cluster_cols = FALSE)
+
 
 k <- 25
 # --- PCA FA ---
@@ -42,13 +50,19 @@ n <- dim(data[,-1])[1]
 p <- dim(data[,-1])[2]
 pca_result <- PCA(data[,-1])
 theta <- pca_result$theta[,1:k]
-D2 <- pca_result$D2[1:k]
-lambda <- matvec(theta, as.numeric(lapply(D2, sqrt)))
+D2 <- pca_result$D2
+D2_k <- D2[1:k]
+lambda <- matvec(theta, as.numeric(lapply(D2_k, sqrt)))
 lambda <- as.numeric(varimax(lambda)$loadings)
 lambda <- matrix(lambda, nrow=p, ncol=k)
 rownames(lambda) <- colnames(data[,-1])
+View(lambda)
 
-sum(D2[1:2]) / sum(D2)
+#variance explained by k=6 and k=25
+print(paste0("k=6: ", sum(D2[1:6]) / sum(D2)))
+print(paste0("k=25: ", sum(D2[1:25]) / sum(D2)))
+            
+#Frobenious of error 
 norm(cov(data[,-1]) - lambda%*%t(lambda), type = "F")
 
 # --- EM FA ---
@@ -62,5 +76,6 @@ lambda <- matrix(lambda, nrow=p, ncol=k)
 rownames(lambda) <- colnames(data[,-1])
 View(lambda)
 
+#Frobenious of error 
 norm(cov(data[,-1]) - lambda%*%t(lambda), type = "F")
 
