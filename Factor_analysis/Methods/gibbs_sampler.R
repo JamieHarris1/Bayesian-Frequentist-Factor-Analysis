@@ -2,7 +2,7 @@ library(statmod)
 library(matlab)
 library(tensr)
 
-gibbs <- function(data, k, nrun, chain, thin, save_folder)
+gibbs <- function(data, k_tilde, nrun, chain, thin, save_folder)
 {
   # -- read data --
   p <- ncol(data)
@@ -23,28 +23,28 @@ gibbs <- function(data, k, nrun, chain, thin, save_folder)
   bd2 <- 1
   
   # -- initial values --
-  lambda <- matrix(0, nrow=p, ncol=k_initial)
+  lambda <- matrix(0, nrow=p, ncol=k_tilde)
   sigma <- rgamma(p, shape = asigma, scale = 1 / bsigma)
   Sigma <- diag(1 / sigma)
-  eta <-  matrix(rnorm(n * k), n, k)
-  mean_F <- zeros(n, k)
+  eta <-  matrix(rnorm(n * k_tilde), n, k_tilde)
+  mean_F <- zeros(n, k_tilde)
   var_F <- eye(k)
-  phijh <- matrix(rgamma(p * k, shape = nu / 2, scale = 2 / nu), p, k)
-  delta <- rgamma(k, shape=c(ad1, rep(ad2, k-1)), scale=c(bd1, rep(bd2, k-1)))
+  phijh <- matrix(rgamma(p * k_tilde, shape = nu / 2, scale = 2 / nu), p, k_tilde)
+  delta <- rgamma(k_tilde, shape=c(ad1, rep(ad2, k_tilde-1)), scale=c(bd1, rep(bd2, k-1)))
   tauh <- cumprod(delta)
   precision_lambda <- matvec(phijh, tauh)
   
   # -- Gibbs sampler -- 
-  for(i in 1:nrun)
+  for(t in 1:nrun)
   {
-    if(i%%1000==0){
-      print(paste0("Iteration: ",i))
+    if(t%%1000==0){
+      print(paste0("Iteration: ",t))
     }
     
     
     # -- update factors -- 
     sigma_lambda <- vecmat(sigma, lambda)
-    var_F_inv <- diag(k) + t(sigma_lambda) %*% lambda
+    var_F_inv <- diag(k_tilde) + t(sigma_lambda) %*% lambda
     T <- chol(var_F_inv)
     qrT <- qr(T)
     Q <- qr.Q(qrT)
@@ -52,7 +52,7 @@ gibbs <- function(data, k, nrun, chain, thin, save_folder)
     S <- solve(R)
     var_F <- tcrossprod(S)
     mean_F <- X %*% sigma_lambda %*% var_F
-    x <- matrix(rnorm(n * k), nrow = n, ncol = k)
+    x <- matrix(rnorm(n * k_tilde), nrow = n, ncol = k_tilde)
     F <- mean_F + x %*% t(S)
     
     # -- update lambda --
@@ -62,33 +62,27 @@ gibbs <- function(data, k, nrun, chain, thin, save_folder)
       Qlam <- diag(precision_lambda[j,]) + sigma[j] * F2
       blam <- sigma[j] * (t(F) %*% X[,j])
       Llam <- t(chol(Qlam))
-      zlam <- rnorm(k)
+      zlam <- rnorm(k_tilde)
       vlam <- forwardsolve(Llam, blam)
       mlam <- backsolve(t(Llam), vlam)
       ylam <- backsolve(t(Llam), zlam)
       lambda[j,] <- t(ylam + mlam)
     }
     
-    # -- assess truncation --
-    prob <- 1 / exp(b0 + b1 * i)
-    lind <- colSums(as.matrix(abs(lambda) < epsilon)) / p
-    vec <- lind >= prop
-    num <- sum(vec)
-    
     # -- update phi --
-    for(h in 1:k)
+    for(h in 1:k_tilde)
       phijh[, h] <- rgamma(p, shape= (nu + 1) / 2, rate = (nu + tauh[h] * lambda[,h]^2) / 2)
     
     # --update tau --
     mat <- phijh * lambda^2
-    ad <- ad1 + 0.5 * p * k
+    ad <- ad1 + 0.5 * p * k_tilde
     bd <- bd1 + 0.5 * (1 / delta[1])  * sum(tauh * colSums(mat))
     delta[1] <- rgamma(1, shape = ad, scale = 1 / bd)
     tauh <- cumprod(delta)
-    for(h in 2:k)
+    for(h in 2:k_tilde)
     {
-      ad <- ad2 + 0.5 * p * (k - h + 1)
-      bd <- bd2 + 0.5 * (1 / delta[h]) * sum(tauh[h:k] * colSums(as.matrix(mat[, h:k])))
+      ad <- ad2 + 0.5 * p * (k_tilde - h + 1)
+      bd <- bd2 + 0.5 * (1 / delta[h]) * sum(tauh[h:k_tilde] * colSums(as.matrix(mat[, h:k_tilde])))
       delta[h] <- rgamma(1, shape = ad, scale = 1 / bd)
       tauh <- cumprod(delta)
     }
@@ -101,29 +95,37 @@ gibbs <- function(data, k, nrun, chain, thin, save_folder)
     # -- update lambda precision
     precision_lambda <- matvec(phijh, tauh)
     
+    
+    # -- number of effective factors --
+    lind <- colSums(as.matrix(abs(lambda) < epsilon)) / p
+    vec <- lind >= prop
+    m_t <- sum(vec)
+    k_star <- k_tilde - m_t
+    
     #Apply thinning and save
-    if(i %% thin == 0) {
-      file_name <- paste0("Factor_analysis/Results/",save_folder,"/chain_",chain,"_iter_",i,".RData")
-      save(k, sigma, lambda , file = file_name)
+    if(t %% thin == 0) {
+      file_name <- paste0("Factor_analysis/Results/",save_folder,"/chain_",chain,"_iter_",t,".RData")
+      save(k_star, k_tilde, sigma, lambda , file = file_name)
     }
     
     
     # --- Make adaptations ---
+    prob <- 1 / exp(b0 + b1 * t)
     uu <- runif(1, min=0, max=1)
     if (uu < prob) {
-      if (i > 0 && num == 0 && all(lind < 0.995)) {
-        k <-  k + 1
+      if (t > 0 && m_t == 0 && all(lind < 0.995)) {
+        k_tilde <-  k_tilde + 1
         lambda <- cbind(lambda, rep(0, p))
         F <- cbind(F, rnorm(n, 0, 1))
         phijh <- cbind(phijh, rgamma(p, shape = nu/2, scale = 2/nu))
-        delta[k] <- rgamma(1, shape = ad2, scale = 1/bd2)
+        delta[k_tilde] <- rgamma(1, shape = ad2, scale = 1/bd2)
         tauh <- cumprod(delta)
         precision_lambda <- matvec(phijh, tauh)
       }
-      else if (num > 0) {
+      else if (m_t > 0) {
         # print("REMOVING FACTOR")
-        nonred <- setdiff(1:k, which(vec))
-        k <- max(k - num, 1)
+        nonred <- setdiff(1:k_tilde, which(vec))
+        k_tilde <- max(k_star, 1)
         lambda <- lambda[, nonred]
         phijh <- phijh[, nonred]
         F <- F[, nonred]

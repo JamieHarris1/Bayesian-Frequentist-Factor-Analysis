@@ -5,10 +5,10 @@ load("Factor_analysis/Macro_data/stockwatson.Rda")
 X <- stockwatson[-c(1:2, 197:200),] #n x p
 
 # -- initialize --
-nrun <- 10000
+nrun <- 50000
 burnin <- 0
 thin <- 1
-k_initial <- floor(2*log(dim(X)[2]))
+k_tilde_0 <- floor(2*log(dim(X)[2]))
 n <- dim(X)[1]
 p <- dim(X)[2]
 save_folder <- "Iterations"
@@ -21,17 +21,17 @@ t <- seq(1:10000)
 plot(t,1/exp(1+5e-4*t), type = 'l', ylab="Probability of Adapting")
 
 # -- run gibbs sampler --
-run_gibbs(X=X, nrun=nrun, thin=thin, k_initial=k_initial,
+run_gibbs(X=X, nrun=nrun, thin=thin, k_tilde=k_tilde_0,
           save_folder=save_folder, seed1=seed1, seed2=seed2)
 
 
-# -- find optimal k --
-k_func <- find_kstar(nrun=nrun, thin=thin, save_folder=save_folder)
-k_star <- k_func$k_star
-k_t <- k_func$k_t
+# -- Assess k_tilde --
+k_func <- assess_ks(nrun=nrun, thin=thin, save_folder=save_folder)
+k_star_post <- k_func$k_star
+k_star_t <- k_func$k_star_t
 
 # -- assess lambda convergence --
-mcmc <- create_lambda_object(nrun=nrun, thin=thin, k_star=k_star, k_t=k_t,
+mcmc <- create_lambda_object(nrun=nrun, thin=thin, k_star_post=k_star_post, k_star_t=k_star_t,
                              save_folder=save_folder, n=n, p=p)
 n_samples <- nrow(mcmc$lambda_mcmc_1)
 assess_lambda_i(mcmc=mcmc, param_i=1, n_samples=n_samples)
