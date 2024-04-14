@@ -1,0 +1,3 @@
+load("/Users/jamieharris/Documents/GitHub/Bayesiab-Frequentist-Factor-Analysis/Factor_analysis/Results/Iterations/Chain_1/k_star.RData")
+load("/Users/jamieharris/Documents/GitHub/Bayesiab-Frequentist-Factor-Analysis/Factor_analysis/Results/Iterations/Chain_1/k_star.RData")
+k_star

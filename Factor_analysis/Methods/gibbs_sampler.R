@@ -28,11 +28,17 @@ gibbs <- function(data, k_tilde, nrun, chain, thin, save_folder)
   Sigma <- diag(1 / sigma)
   eta <-  matrix(rnorm(n * k_tilde), n, k_tilde)
   mean_F <- zeros(n, k_tilde)
-  var_F <- eye(k)
+  var_F <- eye(k_tilde)
   phijh <- matrix(rgamma(p * k_tilde, shape = nu / 2, scale = 2 / nu), p, k_tilde)
-  delta <- rgamma(k_tilde, shape=c(ad1, rep(ad2, k_tilde-1)), scale=c(bd1, rep(bd2, k-1)))
+  delta <- rgamma(k_tilde, shape=c(ad1, rep(ad2, k_tilde-1)), scale=c(bd1, rep(bd2, k_tilde-1)))
   tauh <- cumprod(delta)
   precision_lambda <- matvec(phijh, tauh)
+  k_star <- k_tilde_0
+  
+  # -- Set up output --
+  k_tilde_t <- c()
+  k_star_t <- c()
+  
   
   # -- Gibbs sampler -- 
   for(t in 1:nrun)
@@ -96,18 +102,23 @@ gibbs <- function(data, k_tilde, nrun, chain, thin, save_folder)
     precision_lambda <- matvec(phijh, tauh)
     
     
+    #Save every k_tilde and k_star
+    k_tilde_t[t] <- k_tilde
+    k_star_t[t] <- k_star
+    
+    #Save thinned Lambda and Sigma
+    if(t %% thin == 0) {
+      lambda_file <- paste0("Factor_analysis/Results/",save_folder,"/chain_",chain,"/Lambda/iter_",(t/thin),".RData")
+      save(lambda , file = lambda_file)
+      sigma_file <- paste0("Factor_analysis/Results/",save_folder,"/chain_",chain,"/sigma/iter_",(t/thin),".RData")
+      save(sigma , file = sigma_file)
+    }
+    
     # -- number of effective factors --
     lind <- colSums(as.matrix(abs(lambda) < epsilon)) / p
     vec <- lind >= prop
     m_t <- sum(vec)
     k_star <- k_tilde - m_t
-    
-    #Apply thinning and save
-    if(t %% thin == 0) {
-      file_name <- paste0("Factor_analysis/Results/",save_folder,"/chain_",chain,"_iter_",t,".RData")
-      save(k_star, k_tilde, sigma, lambda , file = file_name)
-    }
-    
     
     # --- Make adaptations ---
     prob <- 1 / exp(b0 + b1 * t)
@@ -139,4 +150,5 @@ gibbs <- function(data, k_tilde, nrun, chain, thin, save_folder)
     
     
   }
+  return(list(k_tilde_t=k_tilde_t, k_star_t=k_star_t))
 }
