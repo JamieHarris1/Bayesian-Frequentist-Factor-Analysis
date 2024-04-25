@@ -7,10 +7,10 @@ variable_2 <- variable_1 * 0.5 + rnorm(100)
 df <- data.frame(Variable1 = variable_1, Variable2 = variable_2)
 
 # -- Perform PCA -- 
-data <- t(scale(as.matrix(df)))
-data_svd <- svd(data)
-alpha <- data_svd$d
-theta <- data_svd$u
+X <- scale(as.matrix(df))
+SVD <- svd(X)
+D <- SVD$d
+theta <- SVD$v
 pc1 <- theta[, 1] * 3
 pc2 <- theta[, 2] * 2
 
@@ -29,7 +29,6 @@ p <- ggplot(df, aes(x = Variable1, y = Variable2)) +
   coord_fixed()+
   xlab("Var 1") +  
   ylab("Var 2")
-
 
 p <- p + geom_segment(data = lines_df, aes(x = x, y = y, xend = xend, yend = yend),
                       size = 1, color = "black")

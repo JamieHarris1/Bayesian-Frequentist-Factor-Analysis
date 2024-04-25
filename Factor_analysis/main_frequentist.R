@@ -9,12 +9,9 @@ library(tidyverse)
 library(pheatmap)
 source("Factor_analysis/Methods/EM.R")
 source("Factor_analysis/Methods/PCA.R")
-set.seed(123)
-
-
+set.seed(0)
 
 # --- DATA ---
-# omit the first two rows and the last four rows:
 load("Factor_analysis/Macro_data/stockwatson.Rda")
 data <- data.frame(stockwatson)
 start_date <- as.yearqtr("1959 Q1")
@@ -22,9 +19,12 @@ end_date <- as.yearqtr("2008 Q4")
 quarterly_dates <- seq(start_date, end_date, by = 1/4)
 quarterly_dates <- as.Date(quarterly_dates)
 data <- cbind(quarterly_dates, data)
+# omit the first two rows and the last four rows:
 data = data[-c(1:2, 197:200),]
 macro_desc <- read_excel("Factor_analysis/Macro_data/macro_desc.xlsx")
 colnames(data)[2:dim(data)[2]] <- macro_desc$`Short name`
+data[,-1] <- scale(data[,-1], center = TRUE)
+X <- t(data[,-1])
 
 # --- EDA ---
 plot(data$quarterly_dates, data$CPI, type='l',xlab="Date", ylab="Transformed CPI")
@@ -44,38 +44,53 @@ pheatmap(cor(data[,-1]),
          cluster_cols = FALSE)
 
 
-k <- 25
+
 # --- PCA FA ---
-n <- dim(data[,-1])[1]
-p <- dim(data[,-1])[2]
-pca_result <- PCA(data[,-1])
-theta <- pca_result$theta[,1:k]
-D2 <- pca_result$D2
-D2_k <- D2[1:k]
-lambda <- matvec(theta, as.numeric(lapply(D2_k, sqrt)))
-lambda <- as.numeric(varimax(lambda)$loadings)
-lambda <- matrix(lambda, nrow=p, ncol=k)
-rownames(lambda) <- colnames(data[,-1])
-View(lambda)
+k <- 25
+p <- dim(X)[1]
+n <- dim(X)[2]
+
+pca_result <- PCA(X)
+Theta_k <- pca_result$Theta[,1:k]
+alpha <- pca_result$alpha
+alpha_k <- alpha[1:k]
+Lambda <- matvec(Theta_k, as.numeric(lapply(alpha_k, sqrt)))
+Lambda <- as.numeric(varimax(Lambda)$loadings)
+Lambda <- matrix(Lambda, nrow=p, ncol=k)
+rownames(Lambda) <- colnames(data[,-1])
+View(Lambda)
+
+pheatmap(Lambda, 
+         color = colorRampPalette(c("blue", "white", "red"))(100),
+         main = "Covariance Matrix Heatmap",
+         display_numbers = FALSE,
+         cluster_rows = FALSE,
+         cluster_cols = FALSE)
 
 #variance explained by k=6 and k=25
-print(paste0("k=6: ", sum(D2[1:6]) / sum(D2)))
-print(paste0("k=25: ", sum(D2[1:25]) / sum(D2)))
-            
+print(paste0("k=6: ", sum(alpha[1:6]) / sum(alpha)))
+print(paste0("k=25: ", sum(alpha[1:25]) / sum(alpha)))
+
 #Frobenious of error 
-norm(cov(data[,-1]) - lambda%*%t(lambda), type = "F")
+norm(cov(t(X)) - Lambda%*%t(Lambda), type = "F")
 
 # --- EM FA ---
-result <- em(data[,-1], k=k, iter=200)
+result <- em(X, k=k, iter=50000)
 
-lambda <- result$lambda
-sigma <- result$sigma
+Lambda <- result$Lambda
+Sigma <- result$Sigma
 
-lambda <- as.numeric(varimax(lambda)$loadings)
-lambda <- matrix(lambda, nrow=p, ncol=k)
-rownames(lambda) <- colnames(data[,-1])
-View(lambda)
+Lambda <- as.numeric(varimax(Lambda)$loadings)
+Lambda <- matrix(Lambda, nrow=p, ncol=k)
+rownames(Lambda) <- colnames(data[,-1])
+View(Lambda)
 
 #Frobenious of error 
-norm(cov(data[,-1]) - lambda%*%t(lambda), type = "F")
+norm(cov(t(X)) - Lambda%*%t(Lambda), type = "F")
 
+pheatmap(Lambda, 
+         color = colorRampPalette(c("blue", "white", "red"))(100),
+         main = "Covariance Matrix Heatmap",
+         display_numbers = FALSE,
+         cluster_rows = FALSE,
+         cluster_cols = FALSE)

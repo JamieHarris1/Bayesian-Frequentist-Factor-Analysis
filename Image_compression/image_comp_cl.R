@@ -1,46 +1,39 @@
 library(jpeg)
 library(abind)
-perform_pca <- function(data, k){
-  #Image matrices are transposed when read in by jpeg
-  X <- t(data)
+
+perform_pca <- function(X, k){
+  X_bar <- colMeans(X)
+  X <- (X-X_bar)
   
-  #Center and scale image
-  mu <- colMeans(X)
-  sigma <- apply(X, 2, sd)
-  X <- (X-mu)
+  # --- Compute SVD ---
+  SVD <- svd(X)
+  Theta <- SVD$v
+  D <- diag(SVD$d)
+  U <- SVD$u
   
-  #Compute SVD
-  SVD<- svd(X)
-  Theta <- SVD$u
-  A <- diag(SVD$d)
-  U <- SVD$v
-  
-  #Compute k approx of X
-  X_tilde_unscaled <- Theta[,1:k] %*% A[1:k,1:k] %*% t(U[,1:k])
-  X_tilde <- (X_tilde_unscaled) + mu
-  
-  #Write image to storage
-  image <- t(X_tilde)
+  # --- Low Rank SVD Approx ---
+  X_k_SVD <- Theta[,1:k] %*% D[1:k,1:k] %*% t(U[,1:k])
+  image <- t(X_k_SVD)  + X_bar
   return(image)
 }
 
+# --- Load in photo ---
+file_name <- 'cheetah'
+X <- readJPEG(paste('Image_compression/', file_name,'/CL/cheetah_CL.jpeg',
+                        sep=''))
+
+# --- Split 3 Colour Channels ---
+r <- X[,,1]
+g <- X[,,2]
+b <- X[,,3]
+
+# --- Image Compression ---
 for(k in c(10, 20, 50, 100, 500)){
-   #Load in photo
-  file_name <- 'cheetah'
-  photo <- readJPEG(paste('Image_compression/', file_name,'/CL/cheetah_CL.jpeg',
-                          sep=''))
-  
-  #3 colour channels
-  r <- photo[,,1]
-  g <- photo[,,2]
-  b <- photo[,,3]
-  
   photo.r.pca <- perform_pca(r, k)
   photo.g.pca <- perform_pca(g, k)
   photo.b.pca <- perform_pca(b, k)
   image <- list(photo.r.pca, photo.g.pca, photo.b.pca)
   image <- abind(image, along = 3)
-  
   writeJPEG(image, paste('Image_compression/', file_name, '/CL/', file_name, '_', k,
                          '_CL_comp.jpeg',sep=''), quality=1)
 }

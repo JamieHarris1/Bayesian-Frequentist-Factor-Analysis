@@ -1,11 +1,15 @@
 library("tidyverse")
 
 PCA <- function(X){
-  # Perform PCA
-  cov_hat <- cor(X)
-  eig <- eigen(cov_hat)
-  theta <- eig$vectors
-  alpha <- eig$values
+  # --- Perform PCA ---
+  n <- dim(X)[2]
+  print(n)
+  SVD <- svd(t(X))
+  Theta <- SVD$v
+  print(dim(Theta))
+  D <- SVD$d
+  alpha <- D^2 / (n-1)
+  
   variance <- alpha * 100 / sum(alpha)
   cumvar <- cumsum(variance)
   pca <- data.frame(
@@ -14,7 +18,7 @@ PCA <- function(X){
     cumvariance = cumvar
   )
   
-  # Create a scree plot
+  # --- Create a Scree Plot ---
   scree_plot <- ggplot(pca, aes(x = 1:nrow(pca), y = variance)) +
     geom_line(stat = "identity", color = "skyblue", size = 1.5) +
     geom_point(aes(x = 1:nrow(pca), y = variance), color = "red", size = 1) +
@@ -28,9 +32,7 @@ PCA <- function(X){
           panel.background = element_rect(fill = "white"),
           panel.grid = element_blank(),
           panel.border = element_blank() )
-  
-  
-  # Display the scree plot
+
   print(scree_plot)
-  return(list(theta=theta, D2=alpha))
+  return(list(Theta=Theta, alpha=alpha))
 }

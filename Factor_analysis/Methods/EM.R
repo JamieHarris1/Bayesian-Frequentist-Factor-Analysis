@@ -1,36 +1,32 @@
-em <- function(data, k, iter){
-  x <- as.matrix(data)
-  x <- matrix(as.numeric(x), nrow = nrow(x)) #nxp
-  x <- t(x) #pxn
-  p <- dim(x)[1]
-  n <- dim(x)[2]
-  cov_hat <- 1/n * x %*% t(x)
-  epsilon <- 1e-02
+em <- function(X, k, iter){
+  p <- dim(X)[1]
+  n <- dim(X)[2]
+  Sigma_tilde <- 1/n * X %*% t(X)
   
-  #PCA lam and random psi
-  lambda <- matrix(eigen(cov_hat)$vectors[,1:k], nrow = p, ncol = k)
-  sigma <- diag(runif(p))
+  # --- Initialise ---
+  Lambda <- matrix(svd(t(X))$v[,1:k], nrow = p, ncol = k)
+  Sigma <- diag(rep(1,p))
   I <- diag(rep(1,k))
   
-
-  
-  #####
-  
-  for(j in 1:iter){
+  # --- EM Algorithm ---
+  for(t in 1:iter){
+    if(t%%1000==0){
+      print(paste0("Iteration: ",t))
+    }
     #E-STEP
-    sigma_inv <- solve(sigma)
-    M <- solve(I + t(lambda) %*% sigma_inv %*% lambda)
-    S <- M %*% t(lambda) %*% sigma_inv %*% x
+    Sigma_inv <- solve(Sigma)
+    M <- solve(I + t(Lambda) %*% Sigma_inv %*% Lambda)
+    S <- M %*% t(Lambda) %*% Sigma_inv %*% X
     A <- n * M + S %*% t(S)
     
     #M-STEP
-    lambda_new <- x %*% t(S) %*% solve(A)
-    sigma_new <- diag(diag(cov_hat - cov_hat %*% sigma_inv %*% lambda %*% M %*% t(lambda_new)))
+    Lambda_new <- X %*% t(S) %*% solve(A)
+    Sigma_new <- diag(diag(Sigma_tilde - Sigma_tilde %*% Sigma_inv %*% Lambda %*% M %*% t(Lambda_new)))
     
     #UPDATE
-    sigma <- sigma_new
-    lambda <- lambda_new
+    Sigma <- Sigma_new
+    Lambda <- Lambda_new
   }
   
-  return(list(lambda=lambda, sigma=sigma))
+  return(list(Lambda=Lambda, Sigma=Sigma))
 }
