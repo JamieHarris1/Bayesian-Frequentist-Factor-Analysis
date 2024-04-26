@@ -5,7 +5,7 @@ source("Factor_analysis/Methods/bayesian_methods.R")
 load("Factor_analysis/Macro_data/stockwatson.Rda")
 X <- stockwatson[-c(1:2, 197:200),] #n x p
 
-# -- initialize --
+# -- Initialize --
 
 nrun <- 50000
 burnin <- 0
@@ -19,22 +19,22 @@ seeds <- c(1,2)
 
 
 
-# -- prob of adapting --
+# -- Prob of Adapting --
 t <- seq(1:10000)
 plot(t,1/exp(1+5e-4*t), type = 'l', ylab="Probability of Adapting")
 
-# -- run gibbs sampler --
+# -- Run Gibbs Sampler --
 run_gibbs(X=X, nrun=nrun, thin=thin, k_tilde=k_tilde_0,
   save_folder=save_folder, seeds=seeds)
   
   
-  # -- assess k_tilde and k_star --
+# -- Assess k_tilde and k_star --
 k_func <- assess_ks(nrun=nrun, thin=thin, save_folder=save_folder)
 k_star_post <- k_func$k_star_post
 n_samples <- k_func$n_samples
 
 
-# -- assess lambda multimodel post --
+# -- Assess Lambda multimodel post --
 mcmc <- create_lambda_object(nrun=nrun, burnin=burnin, thin=thin,
                              k_star_post=k_star_post, n_samples=n_samples,
                              save_folder=save_folder, n=n, p=p, LQ=FALSE)
@@ -42,7 +42,7 @@ n_samples <- nrow(mcmc$L_mcmc_1)
 assess_L_i(mcmc=mcmc, param_i=78, n_samples=n_samples, type="Lambda")
 
 
-# -- assess diagnostics for L identifiable matrix --
+# -- Assess Diagnostics for L Identifiable Matrix --
 n_samples <- k_func$n_samples
 mcmc <- create_lambda_object(nrun=nrun, burnin=burnin, thin=thin,
                              k_star_post=k_star_post, n_samples=n_samples,
@@ -64,14 +64,14 @@ assess_L_i(mcmc=mcmc, param_i=411, n_samples=n_samples, type="L")
 assess_L_i(mcmc=mcmc, param_i=11, n_samples=n_samples, type="L")
 
 
-# -- assess sigma convergence --
+# -- Assess Sigma Convergence --
 sigma_mcmc <- assess_sigma(nrun=nrun, burnin=burnin, thin=thin, k_star_post=k_star_post,
                            n_samples=n_samples, save_folder=save_folder)
 diagnostics(sigma_mcmc[,,c(17, 22, 21)])
 
 
 
-# -- loadings interpretation --
+# -- Loadings Interpretation --
 macro_desc <- read_excel("Factor_analysis/Macro_data/macro_desc.xlsx")
 L_post <- colMeans(rbind(mcmc$L_mcmc_1, mcmc$L_mcmc_2))
 L_post <- matrix(L_post, nrow=p, ncol=k_star_post)
